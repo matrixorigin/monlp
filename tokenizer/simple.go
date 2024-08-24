@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"iter"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -53,8 +54,17 @@ func NewSimpleTokenizer(input []byte) (*SimpleTokenizer, error) {
 }
 
 func isBreakerRune(rune rune) bool {
-	// See ASCII table
-	return rune < 33 || rune == 127 || rune == utf8.RuneError
+	if rune < 128 {
+		if rune >= '0' && rune <= '9' {
+			return false
+		} else if rune >= 'A' && rune <= 'Z' {
+			return false
+		} else if rune >= 'a' && rune <= 'z' {
+			return false
+		}
+		return true
+	}
+	return unicode.IsPunct(rune) || unicode.IsSpace(rune)
 }
 
 // Assume we already tested isBreakerRune.  Test if rune is 1 or 2 byte UTF-8
@@ -115,54 +125,37 @@ func cjkToken(t *SimpleTokenizer, pos int, rune rune, yield func(Token) bool) ha
 		t.outputCJK(pos, yield)
 		t.begin = pos
 		return breakerToken
-		/* } else if isLatin(rune) {
+	} else if isLatin(rune) {
 		t.outputCJK(pos, yield)
 		t.begin = pos
 		return latinToken
-		*/
 	} else {
 		return cjkToken
 	}
 }
 
-// outputLatin outputs the latin token from t.begin to pos
-// punctuation is removed, and all letters are converted to lower case.
-// if the token is longer than MAX_TOKEN_SIZE, it will be truncated.
-// single letter token is ignored, but do increase token position.
 func (t *SimpleTokenizer) outputLatin(pos int, yield func(Token) bool) {
 	t.latinBuf.Reset()
-
-	ibuf := t.input[t.begin:pos]
-	for i := 0; i < len(ibuf); i++ {
-		if ibuf[i] > 127 {
-			if t.latinBuf.Len() >= MAX_TOKEN_SIZE-1 {
-				break
-			} else {
-				t.latinBuf.WriteByte(ibuf[i])
-				t.latinBuf.WriteByte(ibuf[i+1])
-				i += 1
-			}
+	var bs []byte
+	if pos <= t.begin+MAX_TOKEN_SIZE {
+		bs = t.input[t.begin:pos]
+	} else {
+		if t.input[t.begin+MAX_TOKEN_SIZE-1] <= 127 {
+			bs = t.input[t.begin : t.begin+MAX_TOKEN_SIZE]
 		} else {
-			if t.latinBuf.Len() >= MAX_TOKEN_SIZE {
-				break
-			}
-			if (ibuf[i] >= '0' && ibuf[i] <= '9') || (ibuf[i] >= 'a' && ibuf[i] <= 'z') || (ibuf[i] >= 'A' && ibuf[i] <= 'Z') {
-				t.latinBuf.WriteByte(ibuf[i])
-			}
+			bs = t.input[t.begin : pos+MAX_TOKEN_SIZE-1]
 		}
 	}
 
-	if t.latinBuf.Len() > 1 {
-		ls := strings.ToLower(t.latinBuf.String())
-		token := Token{}
-		token.TokenBytes[0] = byte(len(ls))
-		copy(token.TokenBytes[1:], []byte(ls))
-		token.TokenPos = int32(t.currTokenPos)
-		token.BytePos = int32(t.begin)
-		if !yield(token) {
-			t.Done = true
-			return
-		}
+	ls := strings.ToLower(string(bs))
+	token := Token{}
+	token.TokenBytes[0] = byte(len(ls))
+	copy(token.TokenBytes[1:], []byte(ls))
+	token.TokenPos = int32(t.currTokenPos)
+	token.BytePos = int32(t.begin)
+	if !yield(token) {
+		t.Done = true
+		return
 	}
 	t.currTokenPos += 1
 }

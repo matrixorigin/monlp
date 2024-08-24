@@ -54,26 +54,28 @@ func makeToken(token string, pos int32) Token {
 func TestLatin(t *testing.T) {
 	checkTokenize(t, "hello, world", []Token{
 		makeToken("hello", 0),
-		makeToken("world", 1),
+		makeToken("world", 2),
 	})
-	checkTokenize(t, "hello, world!   From Me.", []Token{
+	checkTokenize(t, " hello, world!   From Me.", []Token{
 		makeToken("hello", 0),
-		makeToken("world", 1),
-		makeToken("from", 3),
-		makeToken("me", 4),
+		makeToken("world", 2),
+		makeToken("from", 4),
+		makeToken("me", 5),
 	})
 	checkTokenize(t, "  H1N1 Covid19 a b@b\nc3", []Token{
 		makeToken("h1n1", 1),
 		makeToken("covid19", 2),
-		makeToken("bb", 4),
-		makeToken("c3", 6),
+		makeToken("a", 3),
+		makeToken("b", 4),
+		makeToken("b", 6),
+		makeToken("c3", 8),
 	})
 	checkTokenize(t, "À bon chat, bon rat", []Token{
 		makeToken(strings.ToLower("À"), 0),
 		makeToken("bon", 1),
 		makeToken("chat", 2),
-		makeToken("bon", 3),
-		makeToken("rat", 4),
+		makeToken("bon", 4),
+		makeToken("rat", 5),
 	})
 	checkTokenize(t, "Mieux vaut prévenir que guérir", []Token{
 		makeToken("mieux", 0),
@@ -85,6 +87,7 @@ func TestLatin(t *testing.T) {
 	checkTokenize(t, "abcdefgHiJklMnOpqRstUvwxyz is a 26 letters long word!", []Token{
 		makeToken("abcdefghijklmnopqrstuvw", 0),
 		makeToken("is", 1),
+		makeToken("a", 2),
 		makeToken("26", 3),
 		makeToken("letters", 4),
 		makeToken("long", 5),
@@ -103,26 +106,50 @@ func TestCJK(t *testing.T) {
 		makeToken("难", 6),
 	})
 	checkTokenize(t, "I come, I see, I征服", []Token{
+		makeToken("i", 0),
 		makeToken("come", 1),
-		makeToken("see", 3),
-		makeToken("征服", 5),
-		makeToken("服", 6),
+		makeToken("i", 3),
+		makeToken("see", 4),
+		makeToken("i", 6),
+		makeToken("征服", 7),
+		makeToken("服", 8),
 	})
 	checkTokenize(t, "中华铅笔2B的好用, 6B的太软了", []Token{
 		makeToken("中华铅", 0),
 		makeToken("华铅笔", 1),
-		makeToken("铅笔2", 2),
-		makeToken("笔2B", 3),
-		makeToken("2B的", 4),
-		makeToken("B的好", 5),
-		makeToken("的好用", 6),
-		makeToken("好用,", 7),
-		makeToken("用,", 8),
-		makeToken(",", 9),
-		makeToken("6b", 10),
-		makeToken("的太软", 11),
-		makeToken("太软了", 12),
-		makeToken("软了", 13),
-		makeToken("了", 14),
+		makeToken("铅笔", 2),
+		makeToken("笔", 3),
+		makeToken("2b", 4),
+		makeToken("的好用", 5),
+		makeToken("好用", 6),
+		makeToken("用", 7),
+		makeToken("6b", 9),
+		makeToken("的太软", 10),
+		makeToken("太软了", 11),
+		makeToken("软了", 12),
+		makeToken("了", 13),
 	})
+}
+
+func TestBreakerRunes(t *testing.T) {
+	for _, r := range " ,.!?;:()[]'{}<>\t\n\r-@#$%^&*_=+|\\\"`~" {
+		if !isBreakerRune(r) {
+			t.Errorf("Latin isBreakerRune(%c) = false, want true", r)
+		}
+	}
+	for _, r := range "，。《》！-+" {
+		if !isBreakerRune(r) {
+			t.Errorf("CJK isBreakerRune(%c) = false, want true", r)
+		}
+	}
+	for _, r := range "abcABC123" {
+		if isBreakerRune(r) {
+			t.Errorf("Latine isBreakerRune(%c) = true, want false", r)
+		}
+	}
+	for _, r := range "相见时难别亦难" {
+		if isBreakerRune(r) {
+			t.Errorf("CJK isBreakerRune(%c) = true, want false", r)
+		}
+	}
 }
