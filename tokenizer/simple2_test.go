@@ -38,27 +38,27 @@ func TestShakespear(tt *testing.T) {
 		return
 	}
 
-	var mk1000, mk1100 Token
-	mk1000.TokenBytes[0] = 12
-	copy(mk1000.TokenBytes[1:], []byte("_MARKER_1000"))
-	mk1100.TokenBytes[0] = 12
-	copy(mk1100.TokenBytes[1:], []byte("_MARKER_1100"))
+	var mka, mkb Token
+	mka.TokenBytes[0] = 13
+	copy(mka.TokenBytes[1:], []byte("_MARKER_10000"))
+	mkb.TokenBytes[0] = 13
+	copy(mkb.TokenBytes[1:], []byte("_MARKER_10100"))
 
-	var mk1000Pos, mk1100Pos, maxToken int64
+	var mkaPos, mkbPos, maxToken int64
 
 	tknz := NewSimpleTokenizer(data)
 	for t := range tknz.Tokenize() {
-		if t.TokenBytes == mk1000.TokenBytes {
-			mk1000Pos = t.TokenPos
-			tt.Log("SomeText after mk1000:", string(data[mk1000Pos:mk1000Pos+50]))
-		} else if t.TokenBytes == mk1100.TokenBytes {
-			mk1100Pos = t.TokenPos
+		if t.TokenBytes == mka.TokenBytes {
+			mkaPos = t.TokenPos
+		} else if t.TokenBytes == mkb.TokenBytes {
+			mkbPos = t.TokenPos
+			tt.Log("Text between 1000 and 1100:", string(data[mkaPos:mkbPos]))
 		}
 		maxToken = t.TokenPos
 	}
 
-	tt.Log("mk1000Pos:", mk1000Pos)
-	tt.Log("mk1100Pos:", mk1100Pos)
+	tt.Log("mk10000Pos:", mkaPos)
+	tt.Log("mk10100Pos:", mkbPos)
 	tt.Log("MaxToken:", maxToken)
 }
 
@@ -89,9 +89,9 @@ func TestHLM(tt *testing.T) {
 	for t := range tknz.Tokenize() {
 		if t.TokenBytes == mk1000.TokenBytes {
 			mk1000Pos = t.TokenPos
-			tt.Log("SomeText after mk1000:", string(data[mk1000Pos:mk1000Pos+50]))
 		} else if t.TokenBytes == mk1100.TokenBytes {
 			mk1100Pos = t.TokenPos
+			tt.Log("Text between 1000 and 1100:", string(data[mk1000Pos:mk1100Pos]))
 		}
 		maxToken = t.TokenPos
 	}
