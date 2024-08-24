@@ -38,28 +38,22 @@ func TestShakespear(tt *testing.T) {
 		return
 	}
 
-	var mka, mkb Token
-	mka.TokenBytes[0] = 13
-	copy(mka.TokenBytes[1:], []byte("_MARKER_10000"))
-	mkb.TokenBytes[0] = 13
-	copy(mkb.TokenBytes[1:], []byte("_MARKER_10100"))
+	var cntRomeo, cntJoliet, bMax, tMax int32
 
-	var mkaPos, mkbPos, maxToken int64
-
-	tknz := NewSimpleTokenizer(data)
+	tknz, _ := NewSimpleTokenizer(data)
 	for t := range tknz.Tokenize() {
-		if t.TokenBytes == mka.TokenBytes {
-			mkaPos = t.TokenPos
-		} else if t.TokenBytes == mkb.TokenBytes {
-			mkbPos = t.TokenPos
-			tt.Log("Text between 1000 and 1100:", string(data[mkaPos:mkbPos]))
+		if t.TokenBytes[0] == 5 && string(t.TokenBytes[1:6]) == "romeo" {
+			cntRomeo++
+		} else if t.TokenBytes[0] == 6 && string(t.TokenBytes[1:7]) == "juliet" {
+			cntJoliet++
 		}
-		maxToken = t.TokenPos
+
+		bMax = t.BytePos
+		tMax = t.TokenPos
 	}
 
-	tt.Log("mk10000Pos:", mkaPos)
-	tt.Log("mk10100Pos:", mkbPos)
-	tt.Log("MaxToken:", maxToken)
+	tt.Log("Romeo Count:", cntRomeo, "Julient Count:", cntJoliet)
+	tt.Log("LastToken:", tMax, "At Byte:", bMax)
 }
 
 func TestHLM(tt *testing.T) {
@@ -77,26 +71,27 @@ func TestHLM(tt *testing.T) {
 		return
 	}
 
-	var mk1000, mk1100 Token
-	mk1000.TokenBytes[0] = 12
-	copy(mk1000.TokenBytes[1:], []byte("_MARKER_1000"))
-	mk1100.TokenBytes[0] = 12
-	copy(mk1100.TokenBytes[1:], []byte("_MARKER_1100"))
+	var cntJBY, cntLDY, bMax, tMax int32
 
-	var mk1000Pos, mk1100Pos, maxToken int64
-
-	tknz := NewSimpleTokenizer(data)
+	tknz, _ := NewSimpleTokenizer(data)
 	for t := range tknz.Tokenize() {
-		if t.TokenBytes == mk1000.TokenBytes {
-			mk1000Pos = t.TokenPos
-		} else if t.TokenBytes == mk1100.TokenBytes {
-			mk1100Pos = t.TokenPos
-			tt.Log("Text between 1000 and 1100:", string(data[mk1000Pos:mk1100Pos]))
+		if t.TokenBytes[0] == 9 && string(t.TokenBytes[1:10]) == "贾宝玉" {
+			origString := string(data[t.BytePos : t.BytePos+9])
+			if origString != "贾宝玉" {
+				tt.Error("Mismatched JBY")
+			}
+			cntJBY++
+		} else if t.TokenBytes[0] == 9 && string(t.TokenBytes[1:10]) == "林黛玉" {
+			origString := string(data[t.BytePos : t.BytePos+9])
+			if origString != "林黛玉" {
+				tt.Error("Mismatched LDY")
+			}
+			cntLDY++
 		}
-		maxToken = t.TokenPos
-	}
 
-	tt.Log("mk1000Pos:", mk1000Pos)
-	tt.Log("mk1100Pos:", mk1100Pos)
-	tt.Log("MaxToken:", maxToken)
+		tMax = t.TokenPos
+		bMax = t.BytePos
+	}
+	tt.Log("JBY Count:", cntJBY, "LDY Count:", cntLDY)
+	tt.Log("LastToken:", tMax, "At Byte:", bMax)
 }

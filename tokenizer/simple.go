@@ -23,13 +23,13 @@ import (
 )
 
 const (
-	MAX_TOKEN_SIZE    = 23
-	MARKER_PER_TOKENS = 100
+	MAX_TOKEN_SIZE = 23
 )
 
 type Token struct {
 	TokenBytes [1 + MAX_TOKEN_SIZE]byte
-	TokenPos   int64
+	TokenPos   int32
+	BytePos    int32
 }
 
 type SimpleTokenizer struct {
@@ -39,15 +39,17 @@ type SimpleTokenizer struct {
 	// the buffer to store the _token
 	begin        int
 	currTokenPos int
-	nextMarker   int
 	latinBuf     bytes.Buffer
 
 	Done bool
 	Err  error
 }
 
-func NewSimpleTokenizer(input []byte) *SimpleTokenizer {
-	return &SimpleTokenizer{input: input, nextMarker: MARKER_PER_TOKENS}
+func NewSimpleTokenizer(input []byte) (*SimpleTokenizer, error) {
+	if len(input) > 1024*1024*1024 {
+		return nil, fmt.Errorf("input too large")
+	}
+	return &SimpleTokenizer{input: input}, nil
 }
 
 func isBreakerRune(rune rune) bool {
@@ -81,7 +83,7 @@ func breakerToken(t *SimpleTokenizer, pos int, rune rune, yield func(Token) bool
 	} else {
 		// if the breaker is not a single space, we increase token count.
 		if pos > t.begin+1 || t.input[t.begin] != ' ' {
-			t.incrTokenCount(1, pos, yield)
+			t.currTokenPos += 1
 		}
 		if isLatin(rune) {
 			t.begin = pos
@@ -123,21 +125,6 @@ func cjkToken(t *SimpleTokenizer, pos int, rune rune, yield func(Token) bool) ha
 	}
 }
 
-func (t *SimpleTokenizer) incrTokenCount(n int, pos int, yield func(Token) bool) {
-	t.currTokenPos += n
-	if t.currTokenPos >= t.nextMarker {
-		mkStr := fmt.Sprintf("_MARKER_%d", t.nextMarker)
-		token := Token{}
-		token.TokenBytes[0] = byte(len(mkStr))
-		copy(token.TokenBytes[1:], []byte(mkStr))
-		token.TokenPos = int64(pos)
-		if !yield(token) {
-			t.Done = true
-		}
-		t.nextMarker += MARKER_PER_TOKENS
-	}
-}
-
 // outputLatin outputs the latin token from t.begin to pos
 // punctuation is removed, and all letters are converted to lower case.
 // if the token is longer than MAX_TOKEN_SIZE, it will be truncated.
@@ -170,13 +157,14 @@ func (t *SimpleTokenizer) outputLatin(pos int, yield func(Token) bool) {
 		token := Token{}
 		token.TokenBytes[0] = byte(len(ls))
 		copy(token.TokenBytes[1:], []byte(ls))
-		token.TokenPos = int64(t.currTokenPos)
+		token.TokenPos = int32(t.currTokenPos)
+		token.BytePos = int32(t.begin)
 		if !yield(token) {
 			t.Done = true
 			return
 		}
 	}
-	t.incrTokenCount(1, pos, yield)
+	t.currTokenPos += 1
 }
 
 // outputCJK outputs the CJK token from t.begin to pos
@@ -194,16 +182,13 @@ func (t *SimpleTokenizer) outputCJK(pos int, yield func(Token) bool) {
 		token := Token{}
 		token.TokenBytes[0] = byte(id - ia)
 		copy(token.TokenBytes[1:], ibuf[ia:id])
-		token.TokenPos = int64(t.currTokenPos)
+		token.TokenPos = int32(t.currTokenPos)
+		token.BytePos = int32(t.begin + ia)
 		if !yield(token) {
 			t.Done = true
 			return
 		}
-		t.incrTokenCount(1, t.begin+ia, yield)
-		if t.Done {
-			return
-		}
-
+		t.currTokenPos += 1
 		ia = ib
 		ib = ic
 		ic = id

@@ -20,7 +20,7 @@ import (
 )
 
 func tokenize(input []byte) []Token {
-	tknz := NewSimpleTokenizer(input)
+	tknz, _ := NewSimpleTokenizer(input)
 	var tokens []Token
 	for t := range tknz.Tokenize() {
 		tokens = append(tokens, t)
@@ -35,14 +35,15 @@ func checkTokenize(t *testing.T, input string, checkTokens []Token) {
 		return
 	}
 	for i, tk := range tks {
-		if tk != checkTokens[i] {
+		if tk.TokenBytes != checkTokens[i].TokenBytes ||
+			tk.TokenPos != checkTokens[i].TokenPos {
 			t.Errorf("tokenize(%s) = %v, want %v", input, tks, checkTokens)
 			return
 		}
 	}
 }
 
-func makeToken(token string, pos int64) Token {
+func makeToken(token string, pos int32) Token {
 	var tk Token
 	tk.TokenBytes[0] = byte(len(token))
 	copy(tk.TokenBytes[1:], []byte(token))
