@@ -91,8 +91,8 @@ func breakerToken(t *SimpleTokenizer, pos int, rune rune, yield func(Token) bool
 	if isBreakerRune(rune) {
 		return breakerToken
 	} else {
-		// if the breaker is not a single space, we increase token count.
-		if pos > t.begin+1 || t.input[t.begin] != ' ' {
+		// if the breaker is not a single byte we increase token count.
+		if pos > t.begin+1 {
 			t.currTokenPos += 1
 		}
 		if isLatin(rune) {

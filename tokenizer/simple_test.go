@@ -67,8 +67,8 @@ func TestLatin(t *testing.T) {
 		makeToken("covid19", 2),
 		makeToken("a", 3),
 		makeToken("b", 4),
-		makeToken("b", 6),
-		makeToken("c3", 8),
+		makeToken("b", 5),
+		makeToken("c3", 6),
 	})
 	checkTokenize(t, "À bon chat, bon rat", []Token{
 		makeToken(strings.ToLower("À"), 0),
