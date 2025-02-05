@@ -5,15 +5,19 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"text/template"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/fengttt/gcl/dslite"
+	_ "github.com/go-sql-driver/mysql" // mysql driver
 	"github.com/olekukonko/tablewriter"
 )
 
+// MoDB is a wrapper for sql.DB
 type MoDB struct {
 	db *sql.DB
 }
 
+// Close closes the database connection.
 func (db *MoDB) Close() error {
 	if db.db != nil {
 		err := db.db.Close()
@@ -23,29 +27,43 @@ func (db *MoDB) Close() error {
 	return nil
 }
 
+// ConnStr returns a connection string for MySQL (MatrixOrigin).
 func ConnStr(host, port, user, passwd, dbname string) string {
 	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
 		user, passwd, host, port, dbname)
 }
 
+// PyConnStr returns a connection string for MySQL can be used by Python.
 func PyConnStr(host, port, user, passwd, dbname string) string {
 	return fmt.Sprintf("mysql+pymysql://%s:%s@%s:%s/%s",
 		user, passwd, host, port, dbname)
 }
 
-func OpenDB(connstr string) (*MoDB, error) {
-	db, err := sql.Open("mysql", connstr)
-	if err != nil {
-		return nil, err
+// OpenDB opens a database connection.
+func OpenDB(driver, connstr string) (*MoDB, error) {
+	var modb MoDB
+	var err error
+
+	switch driver {
+	case "", "mysql":
+		modb.db, err = sql.Open("mysql", connstr)
+	case "sqlite", "dslite", "sqlite3", "dslite3":
+		modb.db, err = dslite.OpenDB(connstr)
+	default:
+		return nil, fmt.Errorf("unsupported driver: %s", driver)
 	}
-	return &MoDB{db: db}, nil
+	return &modb, err
 }
 
+// Exec executes a SQL statement.
+// Note that some database, esp sqlite3, CREATE/INSERT etc MUST be
+// executed with Exec, not Query.
 func (db *MoDB) Exec(sql string, params ...any) error {
 	_, err := db.db.Exec(sql, params...)
 	return err
 }
 
+// MustExec executes a SQL statement and panics if there is an error.
 func (db *MoDB) MustExec(sql string, params ...any) {
 	err := db.Exec(sql, params...)
 	if err != nil {
@@ -53,14 +71,17 @@ func (db *MoDB) MustExec(sql string, params ...any) {
 	}
 }
 
+// Prepare prepares a SQL statement.
 func (db *MoDB) Prepare(sql string) (*sql.Stmt, error) {
 	return db.db.Prepare(sql)
 }
 
+// Begin starts a transaction.
 func (db *MoDB) Begin() (*sql.Tx, error) {
 	return db.db.Begin()
 }
 
+// QueryVal queries a single value.
 func (db *MoDB) QueryVal(sql string, params ...any) (string, error) {
 	rows, err := db.db.Query(sql, params...)
 	if err != nil {
@@ -76,6 +97,7 @@ func (db *MoDB) QueryVal(sql string, params ...any) (string, error) {
 	return ret, nil
 }
 
+// QueryIVal queries a single integer value.:w
 func (db *MoDB) QueryIVal(sql string, params ...any) (int64, error) {
 	rows, err := db.db.Query(sql, params...)
 	if err != nil {
@@ -91,6 +113,7 @@ func (db *MoDB) QueryIVal(sql string, params ...any) (int64, error) {
 	return ret, nil
 }
 
+// Query runs a query and returns the result as a 2D string array.
 func (db *MoDB) Query(sql string, params ...any) ([][]string, error) {
 	rows, err := db.db.Query(sql, params...)
 	if err != nil {
@@ -120,6 +143,7 @@ func (db *MoDB) Query(sql string, params ...any) ([][]string, error) {
 	return ret, nil
 }
 
+// QueryDump queries and returns the result pretty printed as a string.
 func (db *MoDB) QueryDump(sql string, params ...any) (string, error) {
 	rows, err := db.db.Query(sql, params...)
 	if err != nil {
@@ -157,6 +181,8 @@ func (db *MoDB) QueryDump(sql string, params ...any) (string, error) {
 	return sb.String(), nil
 }
 
+// Token2Q expands tokens and binds parameters.
+// Deprecated: Use Template2Q instead.
 func (db *MoDB) Token2Q(tokens []string, dict map[string]string) (string, []any) {
 	var tks []string
 	var params []any
@@ -181,6 +207,21 @@ func (db *MoDB) Token2Q(tokens []string, dict map[string]string) (string, []any)
 	}
 	qry := strings.Join(tks, " ")
 	return qry, params
+}
+
+// Template2Q expands a template string and binds parameters.
+func (db *MoDB) Template2Q(tstr string, dict map[string]string) (string, error) {
+	t, err := template.New("query").Parse(tstr)
+	if err != nil {
+		return "", err
+	}
+
+	buf := &strings.Builder{}
+	err = t.Execute(buf, dict)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
 
 func qSave(db *MoDB, sql string, params []any, f *os.File) error {

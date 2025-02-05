@@ -11,7 +11,7 @@ import (
 func main() {
 	common.ParseFlags()
 
-	slog.Info("Starting mochat ...")
+	slog.Info("Starting wikiexplorer ...")
 	sh := ishell.New()
 	sh.SetHomeHistoryPath(".mochat_history")
 
@@ -24,6 +24,18 @@ func main() {
 		Func: func(c *ishell.Context) {
 			c.Println("Hello, this is mochat.")
 		},
+	})
+
+	sh.AddCmd(&ishell.Cmd{
+		Name: ".stats",
+		Help: "wiki chunker, parser, tools and more",
+		Func: wikiStatsCmd,
+	})
+
+	sh.AddCmd(&ishell.Cmd{
+		Name: ".load",
+		Help: "wiki chunker, parser, tools and more",
+		Func: wikiLoadCmd,
 	})
 
 	sh.Run()

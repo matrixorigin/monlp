@@ -25,3 +25,6 @@ go.work.sum
 .env
 
 /mochat
+/wikiexplorer
+
+monlp.db

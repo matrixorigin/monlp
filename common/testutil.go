@@ -23,6 +23,11 @@ func OpenFileForTest(pathstrs ...string) (*os.File, error) {
 	return os.Open(rp)
 }
 
+func CreateFileForTest(pathstrs ...string) (*os.File, error) {
+	rp := ProjectPath(pathstrs...)
+	return os.Create(rp)
+}
+
 func Assert(t *testing.T, condition bool, format string, args ...interface{}) {
 	if !condition {
 		if t != nil {

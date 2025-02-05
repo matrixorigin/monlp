@@ -1,0 +1,24 @@
+You are given a question, an article related to the question
+and a list of links.  Each link contains
+the title of the linked aritcle and a short paragragh sourounding 
+the link.  You should rank those links based on how relative, or 
+useful it is to answer the question.
+
+## Question:
+{{.Question}}
+
+## Article:
+{{.Article}}
+
+## Links Links are given in json format.
+{{.Links}}
+
+Please answer up to 3 highest ranked links, in the following 
+json format.
+[
+    {"title": "title of the highest ranked link"},
+    {"title": "title of the next highest ranked link"},
+    {"title": "title of the next highest ranked link"}
+]
+
+

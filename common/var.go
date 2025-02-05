@@ -2,6 +2,7 @@ package common
 
 import (
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"path"
@@ -13,18 +14,23 @@ var (
 	// WorkingDir of mochat.   Note that his is NOT the current
 	// working directory of the process.
 	WorkingDir string
+	// Sql database
+	SqlDriver string
 	// Level of verbosity 0-3
 	Verbose int
 )
 
 func ParseFlags() {
 	fWD := flag.String("d", "", "Working directory")
+	sqlDr := flag.String("db", "mysql", "Sql driver")
 	v1 := flag.Bool("v", false, "Verbose")
 	v2 := flag.Bool("vv", false, "Verbose2")
 	v3 := flag.Bool("vvv", false, "Verbose3")
 
 	flag.Parse()
 	WorkingDir = *fWD
+	SqlDriver = *sqlDr
+
 	if *v1 {
 		Verbose = 1
 	}
@@ -69,4 +75,19 @@ func setupLogger() {
 	}
 	logger := slog.New(slog.NewJSONHandler(lf, opts))
 	slog.SetDefault(logger)
+}
+
+func DbConnInfoForTest() (string, string) {
+	var driver string
+	var connstr string
+	switch SqlDriver {
+	case "sqlite", "sqlite3", "dslite", "dslite3":
+		driver = "sqlite3"
+		connstr = path.Join(WorkingDir, "monlp.db")
+	default:
+		driver = "mysql"
+		connstr = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
+			"dump", "111", "localhost", "6001", "monlp")
+	}
+	return driver, connstr
 }

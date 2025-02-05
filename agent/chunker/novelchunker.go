@@ -3,14 +3,19 @@ package chunker
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 
-	"github.com/matrixorigin/monlp/chunk"
+	"github.com/matrixorigin/monlp/agent"
+	"github.com/matrixorigin/monlp/textu/chunk"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 )
 
 type NovelChunkerConfig struct {
-	StringMode bool `json:"string_mode"`
+	StringMode bool   `json:"string_mode"`
+	Encoding   string `json:"encoding"`
 }
 
 // NovelChunker is a chunker for novels.
@@ -30,11 +35,19 @@ type NovelChunkerStrOutput struct {
 	Data [][]string `json:"data"`
 }
 
-type NovelChunker struct {
+type novelChunker struct {
+	agent.NilCloseAgent
+	agent.SimpleExecuteAgent
 	conf NovelChunkerConfig
 }
 
-func (c *NovelChunker) Config(bs []byte) error {
+func NewNovelChunker() agent.Agent {
+	ca := &novelChunker{}
+	ca.Self = ca
+	return ca
+}
+
+func (c *novelChunker) Config(bs []byte) error {
 	// unmarshal config
 	if bs == nil {
 		return nil
@@ -43,37 +56,46 @@ func (c *NovelChunker) Config(bs []byte) error {
 	return err
 }
 
-func (c *NovelChunker) Close() error {
-	return nil
+func (c *novelChunker) SetValue(name string, encoding any) error {
+	if name == "encoding" {
+		c.conf.Encoding = encoding.(string)
+	}
+	return fmt.Errorf("unknown name: %s", name)
 }
 
-func (c *NovelChunker) Execute(input []byte, dict map[string]string) ([]byte, error) {
-	if len(input) == 0 {
-		return nil, nil
-	}
-
-	// unmarshal input to NovelChunkerInput
+func (c *novelChunker) ExecuteOne(data []byte, dict map[string]string, yield func([]byte, error) bool) error {
 	var novelChunkerInput NovelChunkerInput
-	err := json.Unmarshal(input, &novelChunkerInput)
+	err := json.Unmarshal(data, &novelChunkerInput)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// only handle file:// for now
 	if len(novelChunkerInput.Data.Url) < 7 || novelChunkerInput.Data.Url[:7] != "file://" {
-		return nil, fmt.Errorf("invalid url: %s", novelChunkerInput.Data.Url)
+		return fmt.Errorf("invalid url: %s", novelChunkerInput.Data.Url)
 	}
+
 	// Open the file
 	file, err := os.Open(novelChunkerInput.Data.Url[7:])
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer file.Close()
 
+	var reader io.Reader = file
+
+	if c.conf.Encoding != "" {
+		if c.conf.Encoding == "GBK" {
+			reader = transform.NewReader(file, simplifiedchinese.GBK.NewDecoder())
+		} else {
+			return fmt.Errorf("unknown encoding: %s", c.conf.Encoding)
+		}
+	}
+
 	// Read the file, call chunker
-	chunks, err := chunk.NewNovelChunker(file)
+	chunks, err := chunk.NewNovelChunker(reader)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Marshal the output
@@ -90,9 +112,11 @@ func (c *NovelChunker) Execute(input []byte, dict map[string]string) ([]byte, er
 		}
 		bs, err := json.Marshal(output)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return bs, nil
+		if !yield(bs, nil) {
+			return agent.ErrYieldDone
+		}
 	} else {
 		var output NovelChunkerOutput
 		for chunk := range chunks.Chunk() {
@@ -100,8 +124,11 @@ func (c *NovelChunker) Execute(input []byte, dict map[string]string) ([]byte, er
 		}
 		bs, err := json.Marshal(output)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return bs, nil
+		if !yield(bs, nil) {
+			return agent.ErrYieldDone
+		}
 	}
+	return nil
 }

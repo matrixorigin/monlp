@@ -1,0 +1,13 @@
+You are a question and an article related to answer the question.
+Summarize the article, retrieve only information related to answering
+the question.  USE ONLY information from the ariticle.  
+DO NOT use information or data elsewhere.
+
+## Question:
+{{.Question}}
+
+## Article:
+{{.Article}}
+
+Summarization:
+

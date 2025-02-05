@@ -34,7 +34,7 @@ func NewNovelChunker(r io.Reader) (Chunker, error) {
 }
 
 func (c *NovelChunker) handleLine(yield func(Chunk) bool) {
-	c.num1++ // incr global chunk number
+	// reset local chunk number if we have multiple empty lines
 	c.num2++ // increment local chunk number
 
 	// Prepare the chunk, reset the buffer
@@ -45,8 +45,11 @@ func (c *NovelChunker) handleLine(yield func(Chunk) bool) {
 	}
 	c.buf.Reset()
 
-	// reset local chunk number if we have multiple empty lines
+	// reset chunk number if we have multiple empty lines
+	// note that we do this reset AFTER we prepare the current
+	// chunk
 	if c.emptyLine > 1 {
+		c.num1++
 		c.num2 = 0
 	}
 	c.emptyLine = 0

@@ -1,0 +1,24 @@
+You are given a user query.  You can search a knowledge base to retrieve
+information about a topic.  You have been asked to rephrase or decompose 
+the original user query into small steps. In each step you can search 
+some topics in the knowledge base and ask a subquery.  
+Given the information and answers from previous steps, try to answer the
+orignal user query. USE ONLY information retrieved from previous steps.
+DO NOT use information or data elsewhere.
+
+## Topics Retrieved From Previous Steps
+    {{.Topics}}
+
+## Subqueries and Answers From Previouis Steps
+    {{.Subqueries}}
+
+## Original User Query
+    {{.UserQuery}}
+
+Please be prcise and concise.  You should format answer in the 
+following json format. If there is not enough information to 
+answer the original query, answer should be "NOT ENOUGH INFORMATION".
+{
+    "Answer": "Answer to the query, or NOT ENOUGH INFORMATION"
+}
+

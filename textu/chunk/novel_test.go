@@ -12,29 +12,27 @@ import (
 )
 
 func TestParagraphChunker(t *testing.T) {
-	// test data.   Leading empty lines will create an empty chunk (not yielded)
-	// therefore first paragraph start with 2.1 (the 1st paragraph of 2nd chapter)
 	input := `
+
+
+Paragraph 1.1
+
+Paragraph 1.2
+
 
 
 Paragraph 2.1
 
-Paragraph 3.2
-
-
-
-Paragraph 4.1
-
-Paragraph 5.2
+Paragraph 2.2
 Multiple line
 Does not break paragraph
 
-Paragraph 6.3
+Paragraph 2.3
 
 
-Paragraph 7.1
+Paragraph 3.1
 
-Paragraph 8.2
+Paragraph 3.2
 `
 
 	// create a reader from input
